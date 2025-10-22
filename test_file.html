@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+ 
+  <!-- A VR Purple Bacteria Museum Pilot Prototype by Sonia Rodriguez - Jose L. Rubio - D.Puyol - URJC-->
+ 
+  <head>
+    ...
+    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe-babia-components/dist/aframe-babia-components.min.js"></script>
+    <script src="https://unpkg.com/aframe-environment-component@1.0.0/dist/aframe-environment-component.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.0/dist/aframe-extras.min.js"></script>
+  </head>
+
+  <body>
+    <a-scene fog="type: exponential; color: #f4f2ff; density: 0.001; near: 0; far: 30">
+      
+      
+      
+      <!-- Environment : imagen extraida de... -->
+
+      <a-sky src="" rotation="0 0 0"></a-sky>
+      
+      <!-- Light  -->
+        
+      <a-light type="point" intensity="0.1" position="1 3 -1" color ="#ffffff"></a-light>
+      
+      
+     
+      <!-- Camera -->
+      <a-entity movement-controls="fly: false" position="0 0 0">
+        <a-entity camera position="0 1.6 0" look-controls></a-entity>
+        <a-entity cursor="rayOrigin:mouse"></a-entity>
+        <a-entity laser-controls="hand: right"></a-entity>
+      </a-entity>
+
+      <!-- Reference sphere-->
+       <a-sphere position="0 0 0" radius="0.2" color="#EF2D5E" visible="false"></a-sphere>
+      
+      
+        
+      
+      <!-- ********************************* -->
+      <!--        Interactividad       -->        
+      <!-- ********************************* -->
+      
+      
+  
+      
+      <!--Imagen de fondo Purple Gain -->
+      
+      <a-box src="" depth="1" height="1.06" width="0.01" position="0 1.5 0.65" rotation="0 90 0"
+      ></a-box>
+      
+            
+      
+      
+     <!-- ********************************* -->
+      <!--        Carteles       -->        
+      <!-- ********************************* -->
+       
+  
+       
+           <!-- CartelA -->
+            
+      <a-assets>
+        <a-asset-item id="CartelA" src=""></a-asset-item>
+      </a-assets>
+   
+
+      <a-entity id="aaa" gltf-model="#CartelA" scale="1 1 1" position="1 2 1" rotation= "0 0 0"></a-entity>
+       
+       
+       
+       <!-- CartelPTCSSB -->
+            
+      <a-assets>
+        <a-asset-item id="CartelB" src=""></a-asset-item>
+      </a-assets>
+   
+
+      <a-entity id="bbb" gltf-model="#CartelB" scale="1 1 1" position="1 1 2" rotation= "0 0 0"></a-entity>
+      
+       
+            
+  <!-- Script para hacer clic y escalar cada elemento de manera independiente -->
+  <script>
+    AFRAME.registerComponent('scale-on-click', {
+      schema: {
+        scale: {type: 'vec3', default: {x: 6, y: 6, z: 6}}  // Valor de escala por defecto
+      },
+      init: function () {
+        var el = this.el;  // El elemento en el que se aplica el componente
+        el.addEventListener('click', function () {
+          // Cambiar la escala del elemento al hacer clic
+          el.setAttribute('scale', el.getAttribute('scale').x === 0.3 ? {x: 1, y: 1, z: 1} : {x: 0.3, y: 0.3, z: 0.3});
+        });
+      }
+    });
+
+    // Asignar el componente a cada elemento por separado
+    document.querySelector('#aaa').setAttribute('scale-on-click', '');
+    document.querySelector('#bbb').setAttribute('scale-on-click', '');
+    document.querySelector('#ccc').setAttribute('scale-on-click', '');
+    document.querySelector('#ddd').setAttribute('scale-on-click', '');
+    document.querySelector('#eee').setAttribute('scale-on-click', '');
+
+  </script>
+      
+    
+      
+
+      <!-- ********************************* -->
+      <!--        Assets Enviro       -->        
+      <!-- ********************************* -->
+      
+
+        <!-- Museum Blockout -->
+            
+      <a-assets>
+        <a-asset-item id="blockout" src=""></a-asset-item>
+      </a-assets>
+   
+      <a-entity gltf-model="#blockout" scale="1 1 1" position="0 0 0"></a-entity>
+      
+      
+      
+      
+      <!--ENVIRO -->
+         
+      <a-assets>
+        <a-asset-item id=" ground" src=""></a-asset-item>
+      </a-assets>
+      
+      <a-image src="# ground" height="20" width="20" rotation="0 0 0" repeat="10 10" roughness= "0.8" shader= "flat"></a-image>
+      
+
+      
+
+    </a-scene>
+  </body>
+
+</html>

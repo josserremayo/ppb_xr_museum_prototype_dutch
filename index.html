@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <!-- A VR Purple Bacteria Museum Pilot Prototype by Sonia Rodriguez - Jose L. Rubio - D.Puyol - URJC-->
+
+<head>
+  <meta charset="utf-8" />
+  <title>Purple Bacteria Museum</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.0/dist/aframe-extras.min.js"></script>
+
+  <!-- ✅ Physics (Option A) -->
+  <script src="https://cdn.jsdelivr.net/npm/aframe-physics-system@4.0.1/dist/aframe-physics-system.min.js"></script>
+
+  <link rel="stylesheet" href="./style.css">
+
+  <style>
+    /* ===== Mobile movement overlay (only shows on touch devices) ===== */
+    .mobile-controls {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;           /* default hidden */
+      gap: 12px;
+      z-index: 9999;           /* above WebGL canvas */
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    .mobile-controls button {
+      font: 600 16px/1.1 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: none;
+      background: rgba(255,255,255,0.88);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+    }
+
+    .mobile-controls button:active {
+      transform: translateY(1px);
+    }
+
+    /* Show only when a coarse pointer is present (phones/tablets) */
+    @media (pointer: coarse) {
+      .mobile-controls { display: flex; }
+    }
+
+    /* Ensure the canvas allows drag-look gestures on mobile */
+    canvas.a-canvas {
+      touch-action: none; /* A-Frame expects this for look-controls */
+    }
+  </style>
+
+  <!-- ********************************* -->
+  <!--        Scripts Head      -->
+  <!-- ********************************* -->
+
+  <script>
+  /* =========================
+     Existing components
+  ==========================*/
+  AFRAME.registerComponent('show-on-near', {
+    schema: {
+      target:   { type: 'selector' },
+      distance: { type: 'number', default: 4 },
+      duration: { type: 'number', default: 1200 }
+    },
+    init() {
+      this._opacity = 0;
+      this._a = new THREE.Vector3();
+      this._b = new THREE.Vector3();
+      this._base = new WeakMap();
+      if (this.el.object3D) this.el.object3D.visible = true;
+      this.captureBaseOpacities(this.el);
+      this.applyOpacity(0);
+      this.el.addEventListener('model-loaded', () => { this.captureBaseOpacities(this.el); this.applyOpacity(0); });
+      this.el.addEventListener('object3dset',   () => { this.captureBaseOpacities(this.el); this.applyOpacity(0); });
+    },
+    tick(time, delta) {
+      const t = this.data.target;
+      if (!t || !t.object3D) return;
+      this.el.object3D.getWorldPosition(this._a);
+      t.object3D.getWorldPosition(this._b);
+      const d = this._a.distanceTo(this._b);
+      const goingIn = d <= this.data.distance;
+      const step    = (delta / this.data.duration) * (goingIn ? 1 : -1);
+      const next    = THREE.MathUtils.clamp(this._opacity + step, 0, 1);
+      if (next !== this._opacity) { this._opacity = next; this.applyOpacity(this._opacity); }
+    },
+    captureBaseOpacities(el) {
+      if (el.components && el.components.material) {
+        const matAttr = el.getAttribute('material') || {};
+        const base = (typeof matAttr.opacity === 'number') ? matAttr.opacity : 1;
+        this._base.set(el, base);
+      }
+      if (el.components && el.components.text) {
+        const txtAttr = el.getAttribute('text') || {};
+        const base = (typeof txtAttr.opacity === 'number') ? txtAttr.opacity : 1;
+        const key = { type: 'text', el };
+        el.__textBaseKey = key;
+        this._base.set(key, base);
+      }
+      const mesh = el.getObject3D('mesh');
+      if (mesh) {
+        mesh.traverse(node => {
+          if (node.isMesh && node.material) {
+            const mats = Array.isArray(node.material) ? node.material : [node.material];
+            mats.forEach(m => { if (!this._base.has(m)) this._base.set(m, (typeof m.opacity === 'number') ? m.opacity : 1); });
+          }
+        });
+      }
+      Array.from(el.children).forEach(child => this.captureBaseOpacities(child));
+    },
+    applyOpacity(value) {
+      this.setOpacityForEl(this.el, value);
+      Array.from(this.el.children).forEach(child => this.setOpacityForEl(child, value));
+    },
+    setOpacityForEl(el, value) {
+      const mesh = el.getObject3D('mesh');
+      if (mesh) {
+        mesh.traverse(node => {
+          if (node.isMesh && node.material) {
+            const mats = Array.isArray(node.material) ? node.material : [node.material];
+            mats.forEach(m => {
+              const base = this._base.get(m) ?? 1;
+              const v = base * value;
+              m.transparent = v < 1 || base < 1;
+              m.opacity = v;
+              if (m.alphaTest) m.alphaTest = Math.min(m.alphaTest, 0.01);
+              m.needsUpdate = true;
+            });
+          }
+        });
+      }
+      if (el.components && el.components.material) {
+        const base = this._base.get(el) ?? 1;
+        const v = base * value;
+        el.setAttribute('material', 'transparent', v < 1 || base < 1);
+        el.setAttribute('material', 'opacity', v);
+      }
+      if (el.components && el.components.text) {
+        const current = el.getAttribute('text') || {};
+        el.setAttribute('text', Object.assign({}, current, { opacity: value }));
+      }
+      Array.from(el.children).forEach(child => this.setOpacityForEl(child, value));
+    }
+  });
+
+  AFRAME.registerComponent('video-audio-toggle', {
+    schema: { video: { type: 'selector' }, label: { type: 'selector' } },
+    init() {
+      this._onClick = this.onClick.bind(this);
+      this._onEnter = () => this.el.setAttribute('material', 'opacity', 0.9);
+      this._onLeave = () => this.el.setAttribute('material', 'opacity', 0.7);
+      this.el.addEventListener('click', this._onClick);
+      this.el.addEventListener('mouseenter', this._onEnter);
+      this.el.addEventListener('mouseleave', this._onLeave);
+      this.updateLabel();
+    },
+    playVideo() {
+      const v = this.data.video;
+      if (!v) return;
+      const p = v.play();
+      if (p && typeof p.then === 'function') p.catch(()=>{});
+    },
+    onClick() {
+      const v = this.data.video; if (!v) return;
+      this.playVideo();
+      v.muted = !v.muted;
+      if (!v.muted && v.volume === 0) v.volume = 0.8;
+      this.updateLabel();
+    },
+    updateLabel() {
+      const v = this.data.video, label = this.data.label;
+      if (!v || !label) return;
+      const isMuted = v.muted || v.volume === 0;
+      const current = label.getAttribute('text') || {};
+      label.setAttribute('text', Object.assign({}, current, { value: isMuted ? 'Unmute' : 'Mute' }));
+    },
+    remove() {
+      this.el.removeEventListener('click', this._onClick);
+      this.el.removeEventListener('mouseenter', this._onEnter);
+      this.el.removeEventListener('mouseleave', this._onLeave);
+    }
+  });
+
+  AFRAME.registerComponent('toggle-entity-visibility', {
+    schema: {
+      target:   { type: 'selector' },
+      label:    { type: 'selector' },
+      sound:    { type: 'selector', default: null },
+      playText: { default: 'Play' },
+      pauseText:{ default: 'Pause' }
+    },
+    init() {
+      this._onClick = this.onClick.bind(this);
+      this._onEnter = () => this.el.setAttribute('material', 'opacity', 0.9);
+      this._onLeave = () => this.el.setAttribute('material', 'opacity', 0.7);
+      this.el.addEventListener('click', this._onClick);
+      this.el.addEventListener('mouseenter', this._onEnter);
+      this.el.addEventListener('mouseleave', this._onLeave);
+      this.updateLabel();
+    },
+    unlockAudioIfNeeded() {
+      try {
+        const scene = this.el.sceneEl;
+        const ctx = scene && scene.audioListener && scene.audioListener.context;
+        if (ctx && ctx.state !== 'running') ctx.resume();
+      } catch (e) {}
+    },
+    onClick() {
+      const t = this.data.target;
+      const soundCmp = this.data.sound && this.data.sound.components ? this.data.sound.components.sound : null;
+      if (!t) return;
+
+      this.unlockAudioIfNeeded();
+
+      const visibleNow = !!t.getAttribute('visible');
+
+      if (visibleNow) {
+        t.setAttribute('visible', false);
+        if (soundCmp) { try { soundCmp.pauseSound(); } catch(e) {} }
+      } else {
+        t.setAttribute('visible', true);
+        if (soundCmp) {
+          try {
+            if (!soundCmp.isPlaying) {
+              soundCmp.stopSound();
+              soundCmp.playSound();
+            }
+          } catch(e) {}
+        }
+      }
+      this.updateLabel();
+    },
+    updateLabel() {
+      const label = this.data.label;
+      const t = this.data.target;
+      const s = this.data.sound && this.data.sound.components ? this.data.sound.components.sound : null;
+      if (!label) return;
+      const panelVisible = t ? !!t.getAttribute('visible') : false;
+      const playing = s ? !!s.isPlaying : false;
+      const nextText = (panelVisible && playing) ? this.data.pauseText : this.data.playText;
+      const current = label.getAttribute('text') || {};
+      label.setAttribute('text', Object.assign({}, current, { value: nextText }));
+    },
+    remove() {
+      this.el.removeEventListener('click', this._onClick);
+      this.el.removeEventListener('mouseenter', this._onEnter);
+      this.el.removeEventListener('mouseleave', this._onLeave);
+    }
+  });
+
+  AFRAME.registerComponent('lava-lamp-color', {
+    schema: {
+      hueMin:   {default: 0.62},
+      hueMax:   {default: 0.78},
+      sat:      {default: 0.85},
+      light:    {default: 0.55},
+      satAmp:   {default: 0.10},
+      lightAmp: {default: 0.08},
+      speed:    {default: 0.08},
+      emissive: {default: 0.35},
+      opacityBreath: {default: 0.0}
+    },
+    init() {
+      this._materials = [];
+      this.captureMaterials = this.captureMaterials.bind(this);
+      this.applyColor = this.applyColor.bind(this);
+
+      this.el.addEventListener('model-loaded', this.captureMaterials);
+      this.el.addEventListener('object3dset', this.captureMaterials);
+      this.captureMaterials();
+
+      const c = new THREE.Color();
+      c.setHSL(this.data.hueMin, this.data.sat, this.data.light);
+      this.applyColor(c, 1.0);
+    },
+    captureMaterials() {
+      this._materials.length = 0;
+      const mesh = this.el.getObject3D('mesh');
+      if (!mesh) return;
+      mesh.traverse(n => {
+        if (n.isMesh && n.material) {
+          const mats = Array.isArray(n.material) ? n.material : [n.material];
+          mats.forEach(m => {
+            m.transparent = true;
+            m.needsUpdate = true;
+            this._materials.push(m);
+          });
+        }
+      });
+    },
+    _smooth(u){ return u*u*(3 - 2*u); },
+    tick(timeMs) {
+      if (!this._materials.length) return;
+      const t = (timeMs || 0) / 1000;
+      const d = this.data;
+
+      const w  = d.speed * Math.PI * 2;
+      const s1 = (Math.sin(w * t) + 1) * 0.5;
+      const s2 = (Math.sin(w * 0.63 * t + 1.7) + 1) * 0.5;
+      const s3 = (Math.sin(w * 0.41 * t - 0.9) + 1) * 0.5;
+
+      let uHue = this._smooth( (s1*0.60 + s2*0.25 + s3*0.15) );
+      const hue = THREE.MathUtils.lerp(d.hueMin, d.hueMax, uHue);
+
+      const sat   = THREE.MathUtils.clamp(d.sat + d.satAmp   * (s2 - 0.5) * 2, 0, 1);
+      const light = THREE.MathUtils.clamp(d.light + d.lightAmp* (s3 - 0.5) * 2, 0, 1);
+
+      const op = d.opacityBreath > 0 ? THREE.MathUtils.clamp(1.0 - d.opacityBreath*0.5 + d.opacityBreath*0.5*Math.sin(w*0.33*t), 0.5, 1) : 1.0;
+
+      const color = new THREE.Color();
+      color.setHSL(hue, sat, light);
+
+      this.applyColor(color, op);
+    },
+    applyColor(color, opacity) {
+      const emissiveStrength = this.data.emissive;
+      this._materials.forEach(m => {
+        if (m.color) m.color.copy(color);
+        if (m.emissive) {
+          m.emissive.copy(color).multiplyScalar(emissiveStrength);
+        }
+        if (typeof opacity === 'number') m.opacity = opacity;
+        m.needsUpdate = true;
+      });
+    },
+    remove() {
+      this.el.removeEventListener('model-loaded', this.captureMaterials);
+      this.el.removeEventListener('object3dset', this.captureMaterials);
+    }
+  });
+
+  /* =========================
+     NEW: Mobile-friendly rig
+  ==========================*/
+  AFRAME.registerComponent('rig-touch-move', {
+    schema: { speed: { default: 2.6 } }, // meters per second
+    init() {
+      this._forward = false;
+      this._backward = false;
+      this._v = new THREE.Vector3();
+      this._dir = new THREE.Vector3();
+
+      // Expose simple API to window so the HTML buttons can call it.
+      const self = this;
+      this.el.sceneEl.addEventListener('loaded', () => {
+        window.__rigTouchMove = {
+          setForward: (b)=>{ self._forward = !!b; },
+          setBackward:(b)=>{ self._backward = !!b; }
+        };
+      });
+    },
+    tick(time, deltaMs) {
+      const rig = this.el;
+      const cam = rig.querySelector('[camera]');
+      if (!cam) return;
+
+      const dt = Math.min(deltaMs || 0, 50) / 1000; // clamp to avoid spikes
+      if (!this._forward && !this._backward) return;
+
+      // Move along the camera's facing direction (level on Y)
+      cam.object3D.getWorldDirection(this._dir);
+      this._dir.y = 0;
+      this._dir.normalize();
+
+      const dir = (this._forward ? 1 : 0) + (this._backward ? -1 : 0);
+      this._v.copy(this._dir).multiplyScalar(dir * this.data.speed * dt);
+
+      // Move the kinematic body (safe to set position)
+      rig.object3D.position.add(this._v);
+    }
+  });
+  </script>
+</head>
+
+<body>
+  <!-- ===== Mobile overlay controls (outside canvas, won't block look/move) ===== -->
+  <div class="mobile-controls" id="mobileControls" aria-hidden="true">
+    <!-- Labels as you wanted -->
+    <button id="btnForward" type="button">Back</button>
+    <button id="btnBack" type="button">Forward</button>
+  </div>
+
+  <a-scene
+    physics="driver: cannon; debug: false"
+    renderer="colorManagement: true; physicallyCorrectLights: true; toneMapping: ACESFilmic; exposure: 0.85; shadowMap: true;"
+    background="color: #9aa7b3"
+    fog="type: exponential; color: #7a8793; density: 0.14"
+  >
+    <a-assets timeout="15000">
+      <a-asset-item id="mdl-cristales" src="./asset/cristales_bacterias_2.glb"></a-asset-item>
+      <a-asset-item id="planeta_museo_exterior" src="./asset/planeta_museo_central.glb"></a-asset-item>
+      <a-asset-item id="mdl-techo_paredes_2" src="./asset/paredes_suelo_textura_museo.glb"></a-asset-item>
+      <a-asset-item id="museum_roof" src="./asset/museum_roof.glb"></a-asset-item>
+      <a-asset-item id="museum_floor_dark" src="./asset/museum_floor_light.glb"></a-asset-item>
+      <a-asset-item id="animacion_bacteria_color" src="./asset/ANIMACION_bacteria_color_2.glb"></a-asset-item>
+      <a-asset-item id="Purple_Elixir_Cylinder" src="./asset/Purple_Elixir_Cylinder.glb"></a-asset-item>
+
+      <!-- VIDEO ASSET (muted for autoplay) -->
+      <video id="museum-video"
+             src="./asset/purple_bacteria_screen_video.mp4"
+             loop
+             muted
+             playsinline
+             crossOrigin="anonymous"
+             preload="auto">
+      </video>
+
+      <!-- VOICEOVER AUDIO ASSETS -->
+      <audio id="planet-voiceover" src="./asset/planet_voiceover_01.mp3" preload="auto"></audio>
+      <audio id="museum-voiceover-1" src="./asset/museum_voiceover_1.mpeg" preload="auto"></audio>
+      <audio id="museum-voiceover-2" src="./asset/museum_voiceover_2.mpeg" preload="auto"></audio>
+
+      <!-- SPONSORS IMAGE -->
+      <img id="sponsors" src="./asset/sponsors_logos.jpeg" crossOrigin="anonymous">
+    </a-assets>
+
+    <!-- Global lights — darker mood -->
+    <a-entity light="type: ambient; intensity: 0.6; color: #ffffff"></a-entity>
+    <a-entity light="type: hemisphere; intensity: 0.12; color: #dfe7ef; groundColor: #39454f"></a-entity>
+
+    <!-- SPOTLIGHTS -->
+    <a-entity id="screen-spot"
+              position="2 4 2"
+              light="type: spot; intensity: 3; angle: 30; penumbra: 0.6; distance: 24; decay: 1; color: #ffffff; castShadow: false; target: #video-screen">
+    </a-entity>
+
+    <a-entity id="planet-spot"
+              position="3 4 0.8"
+              light="type: spot; intensity: 2.8; angle: 35; penumbra: 0.6; distance: 18; decay: 1; color: #fff3e6; castShadow: false; target: #planet">
+    </a-entity>
+
+    <a-entity id="statue-spot"
+              position="-2.2 4.2 -8.4"
+              light="type: spot; intensity: 2.6; angle: 32; penumbra: 0.55; distance: 20; decay: 1; color: #eae8ff; castShadow: false; target: #animation_statue">
+    </a-entity>
+
+    <a-entity id="elixir-spot"
+              position="6.3 8 -8.4"
+              light="type: spot; intensity: 6; angle: 90; penumbra: 0.55; distance: 50; decay: 1; color: #e7f1ff; castShadow: false; target: #Elixir_Cylinder">
+    </a-entity>
+
+    <a-entity id="sponsors-spot"
+              position="8.8 4.6 -2"
+              light="type: spot; intensity: 2.8; angle: 28; penumbra: 0.2; distance: 14; decay: 1; color: #fffdf0; castShadow: false;target: #sponsors-wall">
+    </a-entity>
+
+    <a-entity id="crystals-spot"
+              position="0 8 -9.5"
+              light="type: spot; intensity: 10; angle: 90; penumbra: 0.55; distance: 30; decay: 1; color: #e8f3ff; castShadow: false;">
+    </a-entity>
+
+    <a-entity id="roof-spot"
+              position="1 9 9.5"
+              light="type: spot; intensity: 4.4; angle: 180; penumbra: 0.5; distance: 30; decay: 1; color: #ffffff; castShadow: false; target: #roof">
+    </a-entity>
+
+    <a-entity id="shell-spot"
+              position="-2 8 8"
+              light="type: spot; intensity: 1.8; angle: 55; penumbra: 0.55; distance: 35; decay: 1; color: #f6f7fb; castShadow: false; target: #museum-shell">
+    </a-entity>
+
+    <a-entity id="floor-spot"
+              position="0 5 6"
+              light="type: spot; intensity: 1.2; angle: 70; penumbra: 0.7; distance: 30; decay: 1; color: #ffffff; castShadow: false; target: #floor">
+    </a-entity>
+
+    <!-- TEXT lights -->
+    <a-entity id="planet-text-light" position="5 2.2 -0.2" light="type: point; intensity: 0.6; distance: 6; decay: 2; color: #ffffff"></a-entity>
+    <a-entity id="elixir-text-light" position="8.4 2.2 -9"   light="type: point; intensity: 0.6; distance: 6; decay: 2; color: #ffffff"></a-entity>
+    <a-entity id="statue-text-light" position="-2.1 2.5 -9"  light="type: point; intensity: 0.6; distance: 6; decay: 2; color: #ffffff"></a-entity>
+
+    <!-- Background music -->
+    <a-sound id="bg-sound" src="./asset/music.mp3" autoplay="false" loop="true" volume="0.22" position="0 1.6 0"></a-sound>
+
+    <!-- Models -->
+    <a-entity id="crystals" gltf-model="#mdl-cristales" position="0 6 10" scale="1 1 1" animation-mixer shadow="cast: true; receive: true"></a-entity>
+
+    <!-- Planeta -->
+    <a-entity id="planet"
+              gltf-model="#planeta_museo_exterior"
+              position="3 2 0"
+              scale="1 1 1"
+              shadow="cast: true; receive: true"
+              show-on-near="target: #camera; distance: 4; duration: 1200"
+              animation__rotation="property: rotation; to: 5 5 600; loop: true; dur: 20000; easing: linear"
+              animation__float="property: position; dir: alternate; dur: 4000; easing: easeInOutSine; loop: true; to: 3 2.05 0">
+    </a-entity>
+
+    <!-- Estatua -->
+    <a-entity id="animation_statue"
+              gltf-model="#animacion_bacteria_color"
+              position="0 2.6 -10.5"
+              scale="1.8 1.8 1.8"
+              shadow="cast: true; receive: true"
+              lava-lamp-color="hueMin: 0.62; hueMax: 0.78; sat: 0.9; light: 0.55; satAmp: 0.12; lightAmp: 0.1; speed: 0.08; emissive: 0.35; opacityBreath: 0"
+              static-body="shape: mesh">
+    </a-entity>
+
+    <!-- Statue voiceover and UI -->
+    <a-sound id="statue-voice"
+             src="#museum-voiceover-2"
+             autoplay="false"
+             loop="false"
+             position="0 2.2 -10.5"
+             volume="1.8">
+    </a-sound>
+
+    <a-entity id="statue-text-group"
+              position="-2.1 2.1 -9"
+              rotation="0 10 0"
+              visible="false"
+              shadow="receive: true">
+      <a-plane width="3.8" height="5" color="#000000"
+               material="transparent: true; opacity: 0.45"></a-plane>
+      <a-entity id="statue-text"
+                position="0 0.4 0.01"
+                text="value: ; align: left; wrapCount: 52; width: 3.6; color: #FFFFFF; opacity: 1">
+      </a-entity>
+    </a-entity>
+
+    <a-entity id="statue-play-button" position="0 1.2 -9.0" rotation="0 0 0">
+      <a-plane width="1.2" height="0.45" color="#ffffff"
+               material="transparent: true; opacity: 0.7"
+               class="clickable"
+               toggle-entity-visibility="target: #statue-text-group; label: #statue-play-label; sound: #statue-voice; playText: Play; pauseText: Pause"
+               shadow="receive: true">
+      </a-plane>
+      <a-entity id="statue-play-label"
+                position="0 0 0.01"
+                text="value: Play; align: center; width: 2.2; color: #111; wrapCount: 20">
+      </a-entity>
+    </a-entity>
+
+    <!-- ============================== -->
+    <!-- ELIXIR: Model + VO + UI -->
+    <!-- ============================== -->
+
+    <!-- Elixir model -->
+    <a-entity id="Elixir_Cylinder"
+              gltf-model="#Purple_Elixir_Cylinder"
+              position="6.5 2.3 -10.7"
+              scale="2 2 2"
+              shadow="cast: true; receive: true"
+              static-body="shape: mesh">
+    </a-entity>
+
+    <!-- Positional voiceover for the Elixir text panel -->
+    <a-sound id="elixir-voice"
+             src="#museum-voiceover-1"
+             autoplay="false"
+             loop="false"
+             position="6.5 2.0 -10.7"
+             volume="1.8">
+    </a-sound>
+
+    <!-- Text panel (hidden by default), slightly to the right of the cylinder -->
+    <a-entity id="elixir-text-group"
+              position="8.4 2.1 -9"
+              rotation="0 -15 0"
+              visible="false"
+              shadow="receive: true">
+      <a-plane width="3.6" height="3.4" color="#000000"
+               material="transparent: true; opacity: 0.45"></a-plane>
+      <a-entity id="elixir-text"
+                position="0 0 0.01"
+                text="value: ; align: left; wrapCount: 50; width: 3.5; color: #FFFFFF; opacity: 1">
+      </a-entity>
+    </a-entity>
+
+    <!-- Play/Pause button placed IN FRONT of the Elixir Cylinder (toward the camera) -->
+    <a-entity id="elixir-play-button" position="6.5 1.2 -9.2" rotation="0 0 0">
+      <a-plane width="1.2" height="0.45" color="#ffffff"
+               material="transparent: true; opacity: 0.7"
+               class="clickable"
+               toggle-entity-visibility="target: #elixir-text-group; label: #elixir-play-label; sound: #elixir-voice; playText: Play; pauseText: Pause"
+               shadow="receive: true">
+      </a-plane>
+      <a-entity id="elixir-play-label"
+                position="0 0 0.01"
+                text="value: Play; align: center; width: 2.2; color: #111; wrapCount: 20">
+      </a-entity>
+    </a-entity>
+
+    <!-- Planet pedestal + UI -->
+    <a-entity id="planet-pedestal" position="3 0 -2" shadow="cast: true; receive: true">
+      <a-cylinder position="0 0.05 0" radius="1.05" height="0.1" color="#7f8994" material="metalness: 0.2; roughness: 0.85" shadow="receive: true"></a-cylinder>
+      <a-cylinder position="0 0.3 0"  radius="0.9"  height="0.5" color="#9aa3ad" material="metalness: 0.2; roughness: 0.6"  shadow="cast: true; receive: true"></a-cylinder>
+      <a-cylinder position="0 0.58 0" radius="0.7"  height="0.06" color="#cfd5db" material="metalness: 0.15; roughness: 0.4" shadow="cast: true; receive: true"></a-cylinder>
+
+      <!-- Planet voiceover (positional) -->
+      <a-sound id="planet-voice"
+               src="#planet-voiceover"
+               autoplay="false"
+               loop="false"
+               position="0 1 0"
+               volume="1.8">
+      </a-sound>
+
+      <!-- PLAY/PAUSE button next to pedestal -->
+      <a-entity id="info-play-button" position="0 0.8 1" rotation="0 0 0">
+        <a-plane width="1.2" height="0.45" color="#ffffff"
+                 material="transparent: true; opacity: 0.7"
+                 class="clickable"
+                 toggle-entity-visibility="target: #planet-text-group; label: #info-play-label; sound: #planet-voice; playText: Play; pauseText: Pause" shadow="receive: true">
+        </a-plane>
+        <a-entity id="info-play-label"
+                  position="0 0 0.01"
+                  text="value: Play; align: center; width: 2.2; color: #111; wrapCount: 20">
+        </a-entity>
+      </a-entity>
+    </a-entity>
+
+    <!-- Planet text group -->
+    <a-entity id="planet-text-group"
+              position="5 1.6 -0.2"
+              rotation="0 -25 0"
+              visible="false" shadow="receive: true">
+      <a-plane id="planet-text-bg" width="3.6" height="3.1" color="#000000" material="transparent: true; opacity: 0.45"></a-plane>
+      <a-entity id="planet-text" position="0 0.2 0.01"
+                text="value: ; align: left; wrapCount: 50; width: 3.5; color: #FFFFFF; opacity: 1"></a-entity>
+    </a-entity>
+
+    <!-- BIG SCREEN video -->
+    <a-entity id="screen-cluster" position="2.8 0 5" rotation="0 180 0" shadow="cast: false; receive: true" static-body="shape: box">
+      <a-plane id="screen-frame" position="0 3 -2.02" width="8.6" height="4.6" color="#111"
+               material="metalness: 0.1; roughness: 0.9" shadow="receive: true"></a-plane>
+
+      <a-video id="video-screen"
+               src="#museum-video"
+               position="0 3 -2"
+               width="8"
+               height="4.2"
+               rotation="0 0 0"
+               material="metalness: 0; roughness: 1"
+               shadow="receive: true">
+      </a-video>
+
+      <a-entity id="video-audio-button" position="3.9 0.8 -1.95" rotation="0 0 0">
+        <a-plane width="1.2" height="0.45" color="#ffffff" material="transparent: true; opacity: 0.7"
+                 class="clickable"
+                 video-audio-toggle="video: #museum-video; label: #video-audio-label"></a-plane>
+        <a-entity id="video-audio-label" position="0 0 0.01"
+                  text="value: Unmute; align: center; width: 2.2; color: #111; wrapCount: 20"></a-entity>
+      </a-entity>
+    </a-entity>
+
+    <!-- Architecture -->
+    <a-entity id="roof" gltf-model="#museum_roof" position="1 8 8.3" scale="0.8 0.8 0.8" animation-mixer shadow="receive: true" static-body="shape: mesh"></a-entity>
+    <a-entity id="museum-shell" gltf-model="#mdl-techo_paredes_2" position="0 6 10" scale="1 1 1" animation-mixer shadow="receive: true" static-body="shape: mesh"></a-entity>
+    <a-entity id="floor" gltf-model="#museum_floor_dark" position="0 6.05 9" scale="1 1 1" animation-mixer shadow="receive: true" static-body="shape: box"></a-entity>
+
+    <!-- SPONSORS WALL (optional collider if you don’t want to clip through) -->
+    <a-entity id="sponsors-wall" position="10.1 2 -2" rotation="0 -90 0" shadow="receive: true" static-body="shape: box">
+      <a-plane width="3.2" height="2.0" color="#0d0f12"
+               material="metalness: 0.1; roughness: 0.9"
+               position="0 0 -0.02"
+               shadow="receive: true"></a-plane>
+      <a-image src="#sponsors"
+               width="3.0" height="1.8"
+               material="shader: standard; metalness: 0.0; roughness: 0.95"
+               shadow="receive: true"></a-image>
+      <a-plane width="3.0" height="1.8" position="0 0 0.01"
+               material="color: #ffffff; transparent: true; opacity: 0.06"></a-plane>
+    </a-entity>
+
+    <!-- ============== CAMERA RIG ============== -->
+    <!-- Important: rig rotation is 0; camera handles look AND WASD. -->
+    <a-entity id="rig"
+              position="7.5 2 -2"
+              rotation="0 0 0"
+              kinematic-body="radius: 0.35; height: 1.6; stepHeight: 0.25"
+              rig-touch-move="speed: 2.6">
+      <a-entity id="camera"
+                camera
+                look-controls="touchEnabled: true"
+                wasd-controls="acceleration: 60; fly: false"
+                cursor="rayOrigin: mouse"
+                raycaster="objects: .clickable; far: 20"
+                rotation="0 -90 0">
+      </a-entity>
+    </a-entity>
+  </a-scene>
+
+  <!-- ********************************* -->
+  <!--        Scripts Footer      -->
+  <!-- ********************************* -->
+
+  <script>
+  // ===== Mobile overlay button wiring =====
+  (function () {
+    const fwd = document.getElementById('btnForward'); // label says "Back"
+    const back = document.getElementById('btnBack');   // label says "Forward"
+
+    // Helper to bind both mouse and touch starts/ends
+    function bindHold(el, on, off) {
+      const start = (e)=>{ e.preventDefault(); on(); };
+      const end   = (e)=>{ e.preventDefault(); off(); };
+
+      el.addEventListener('mousedown', start);
+      el.addEventListener('mouseup',   end);
+      el.addEventListener('mouseleave',end);
+
+      el.addEventListener('touchstart', start, {passive:false});
+      el.addEventListener('touchend',   end,   {passive:false});
+      el.addEventListener('touchcancel',end,   {passive:false});
+    }
+
+    // Only activate if coarse pointer (mobile/tablet)
+    const isCoarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+    if (isCoarse) {
+      bindHold(fwd,
+        ()=> window.__rigTouchMove && window.__rigTouchMove.setForward(true),
+        ()=> window.__rigTouchMove && window.__rigTouchMove.setForward(false)
+      );
+      bindHold(back,
+        ()=> window.__rigTouchMove && window.__rigTouchMove.setBackward(true),
+        ()=> window.__rigTouchMove && window.__rigTouchMove.setBackward(false)
+      );
+    }
+  })();
+
+  // Background music (start on first user interaction once)
+  function playSound() {
+    const sound = document.querySelector("#bg-sound");
+    if (sound && sound.components && sound.components.sound) {
+      sound.components.sound.playSound();
+    }
+  }
+  document.addEventListener("click", playSound, { once: true });
+
+  // One-time audio unlock + voiceover prime
+  function unlockAndPrimeVoice() {
+    const scene = document.querySelector('a-scene');
+    try {
+      const ctx = scene && scene.audioListener && scene.audioListener.context;
+      if (ctx && ctx.state !== 'running') ctx.resume();
+    } catch(e) {}
+
+    const ids = ['#planet-voice', '#elixir-voice', '#statue-voice'];
+    ids.forEach(sel=>{
+      const s = document.querySelector(sel);
+      if (s && s.components && s.components.sound) {
+        try {
+          s.components.sound.stopSound();
+          s.components.sound.playSound();
+          s.components.sound.pauseSound();
+        } catch(e) {}
+      }
+    });
+  }
+  document.addEventListener('click', unlockAndPrimeVoice, { once: true, passive: true });
+  document.addEventListener('touchend', unlockAndPrimeVoice, { once: true, passive: true });
+
+  // Ensure the video starts (muted autoplay should work; also retry on user gesture)
+  const vid = document.getElementById('museum-video');
+  function tryPlayVideo() {
+    if (!vid) return;
+    const p = vid.play();
+    if (p && typeof p.then === 'function') p.catch(()=>{});
+  }
+  if (vid) {
+    tryPlayVideo();
+    const resume = () => { tryPlayVideo(); document.removeEventListener('click', resume); document.removeEventListener('touchend', resume); };
+    document.addEventListener('click', resume, { passive: true });
+    document.addEventListener('touchend', resume, { passive: true });
+  }
+
+  // Planet text
+  const txt = `Over three billion years ago, Earth was a very different place: young oceans, almost no oxygen, and layers of water where light filtered gently down. In that setting, life began to use sunlight in simple ways.
+
+Among those early light-users were the purple bacteria. They carry out photosynthesis without releasing oxygen. Instead of splitting water, they use substances like hydrogen sulphide or organic compounds. That’s why they thrive where there is light but little oxygen—in microbial mats and stratified waters. They offer a glimpse of what photosynthesis may have looked like before the version that oxygenated the planet.
+
+Much later came the cyanobacteria with the “modern” form of photosynthesis that does release oxygen, triggering the Great Oxidation around 2.4 billion years ago—a leap that changed the air and the oceans for good.`;
+  const textEl = document.querySelector('#planet-text');
+  if (textEl) {
+    const current = textEl.getAttribute('text') || {};
+    textEl.setAttribute('text', Object.assign({}, current, { value: txt }));
+  }
+
+  // Elixir text
+  const elixirTxt = `Some purple bacteria, specifically the non-sulphur types, are able to produce hydrogen when exposed to light. The process is called photofermentation: instead of needing high temperatures or pressures, these bacteria operate at room temperature and without oxygen, using light energy as the main “engine” and consuming simple organic compounds (for example, organic acids). For this reason, it is considered a pathway with low external energy input compared with industrial methods such as electrolysis, where electricity is the major cost.
+
+In practice, they are grown in photobioreactors: illuminated vessels where light and organic matter “go in” and hydrogen gas “comes out”. Groups such as Rhodobacter and Rhodopseudomonas are the most studied. The advantage is twofold: besides producing H₂, these bacteria can use carbon-rich waste streams (wastewater or agri-food by-products), turning “leftovers” into an energy resource. It is an active line of research within the circular economy and wastewater treatment, precisely because light provides much of the energy the system needs.`;
+  const elixirTextEl = document.querySelector('#elixir-text');
+  if (elixirTextEl) {
+    const current = elixirTextEl.getAttribute('text') || {};
+    elixirTextEl.setAttribute('text', Object.assign({}, current, { value: elixirTxt }));
+  }
+
+  // Statue text
+  const statueTxt = `Why purple bacteria change colour
+
+The colour of these bacteria depends on their pigment mix. They contain bacteriochlorophylls, which harvest light and push the tone towards purples/magenta, and carotenoids, which act as photoprotection and add oranges and reds. It isn’t a fixed dye: the cell adjusts how much of each pigment it makes according to its environment—like moving sliders on an equaliser. How those pigments are packed into the light-harvesting complexes also shapes what we see.
+
+Environment drives the shift. Under strong light, cells boost carotenoids as a “sunshade”, and the culture shifts orange, salmon or reddish. Under low light, they increase bacteriochlorophyll and the photosynthetic machinery, and the tone becomes a deeper purple. Oxygen matters too: purple non-sulphur bacteria (e.g., Rhodobacter and Rhodopseudomonas) turn their photosynthetic apparatus on in low-oxygen conditions and look vivid; with aeration, they dial it down and may appear beige. In purple sulphur bacteria, intracellular sulphur granules scatter light and can mute the violet towards browns as granules appear or disappear.
+
+The palette is broad and varies by species and growth stage: pale pink, rose, magenta, violet, and also orange to brick-red or brown when carotenoids dominate or sulphur is present. Nutrients, culture age and temperature fine-tune the shade. In short, the colour isn’t paint—it’s metabolism adapting to light and oxygen—so it works as a simple visual “thermometer” of how these bacteria are operating.`;
+  const statueTextEl = document.querySelector('#statue-text');
+  if (statueTextEl) {
+    const current = statueTextEl.getAttribute('text') || {};
+    statueTextEl.setAttribute('text', Object.assign({}, current, { value: statueTxt }));
+  }
+  </script>
+</body>
+</html>
