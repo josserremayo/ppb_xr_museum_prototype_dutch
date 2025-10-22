@@ -413,9 +413,9 @@
       </video>
 
       <!-- VOICEOVER AUDIO ASSETS -->
-      <audio id="planet-voiceover" src="./asset/planet_voiceover_01.mp3" preload="auto"></audio>
+      <audio id="planet-voiceover" src="./asset/22-okt.-09.56_-paarse-bal.mp3" preload="auto"></audio>
       <audio id="museum-voiceover-1" src="./asset/museum_voiceover_1.mpeg" preload="auto"></audio>
-      <audio id="museum-voiceover-2" src="./asset/museum_voiceover_2.mpeg" preload="auto"></audio>
+      <audio id="museum-voiceover-2" src="./asset/22-okt.-10.32__color.mpeg" preload="auto"></audio>
 
       <!-- SPONSORS IMAGE -->
       <img id="sponsors" src="./asset/sponsors_logos.jpeg" crossOrigin="anonymous">
@@ -774,11 +774,13 @@
   }
 
   // Planet text
-  const txt = `Over three billion years ago, Earth was a very different place: young oceans, almost no oxygen, and layers of water where light filtered gently down. In that setting, life began to use sunlight in simple ways.
+  const txt = `Paarse bal
+  
+Lang lang geleden, meer dan 3 miljard jaar, was de aarde een andere plek, jonge oceanen, bijna zonder zuurstof, lagen van water waarin het licht langzaam werd gefilterd op de weg naar beneden. Daar op die plek, begon het leven licht te gebruiken op een eenvoudige manier.
 
-Among those early light-users were the purple bacteria. They carry out photosynthesis without releasing oxygen. Instead of splitting water, they use substances like hydrogen sulphide or organic compounds. That’s why they thrive where there is light but little oxygen—in microbial mats and stratified waters. They offer a glimpse of what photosynthesis may have looked like before the version that oxygenated the planet.
+Onder deze vroege gebruikers waren de zogenaamde purperbacterien, nog steeds bekend om hun paarse kleur. Ze voeren fotosynthese uit zonder zuurstof te produceren. In plaats van het splitsen van water, gebruiken ze andere chemische stoffen zoals waterstofsulfide (ofwel rotte eierengas) en organische reststoffen. En daarom floreren ze in een zuurstofarme omgeving zoals op de bodem van stilstaande modderige meren, of in zogenaamde microbiele matten. Ze geven een inkijk in hoe fotosynthese eruitzag in de vroege zuurstofloze aarde.
 
-Much later came the cyanobacteria with the “modern” form of photosynthesis that does release oxygen, triggering the Great Oxidation around 2.4 billion years ago—a leap that changed the air and the oceans for good.`;
+Veel later kwamen de cyanobacterien, ookwel bekend als de blauwalgen en de echte groene algen met de bekendere vorm van fotosynthese, waarbij zuurstof vrijkomt. Dit zijn de organismen die de ‘Grote Oxidatie’ hebben gekatalyseerd ongeveer 2.4 miljard jaar geleden. Een sprong in de evolutie van de aarde die de oceanen en lucht voorgoed veranderde.`;
   const textEl = document.querySelector('#planet-text');
   if (textEl) {
     const current = textEl.getAttribute('text') || {};
@@ -796,14 +798,13 @@ In practice, they are grown in photobioreactors: illuminated vessels where light
   }
 
   // Statue text
-  const statueTxt = `Why purple bacteria change colour
+  const statueTxt = `Waarom veranderen purper bacteriën van kleur?
 
-The colour of these bacteria depends on their pigment mix. They contain bacteriochlorophylls, which harvest light and push the tone towards purples/magenta, and carotenoids, which act as photoprotection and add oranges and reds. It isn’t a fixed dye: the cell adjusts how much of each pigment it makes according to its environment—like moving sliders on an equaliser. How those pigments are packed into the light-harvesting complexes also shapes what we see.
+De kleur van deze bacteriën hangt af van hun pigment. Ze bevatten bacteriochlorofyl, waarmee ze licht oogsten, die hen de paarse en magenta kleur geeft. En ze bevatten carotenen, waarmee ze zichtzelf tegen te veel licht beschermen en die de oranje en rode kleur toevoegt. Maar dit is geen vaste kleur, zoals verf. Ze passen hun kleur aan, aan hun omgeving, een beetje vergelijkbaar met een kameleon. Hoe deze pigmenten georganiseerd zijn in hun cel beïnvloedt ook de kleur en vorm die wij zien.
 
-Environment drives the shift. Under strong light, cells boost carotenoids as a “sunshade”, and the culture shifts orange, salmon or reddish. Under low light, they increase bacteriochlorophyll and the photosynthetic machinery, and the tone becomes a deeper purple. Oxygen matters too: purple non-sulphur bacteria (e.g., Rhodobacter and Rhodopseudomonas) turn their photosynthetic apparatus on in low-oxygen conditions and look vivid; with aeration, they dial it down and may appear beige. In purple sulphur bacteria, intracellular sulphur granules scatter light and can mute the violet towards browns as granules appear or disappear.
+De omgeving bepaalt. Onder sterk licht, maken de cellen meer carotenen aan om zichzelf te beschermen. Hierdoor verandert de kleur van een cultuur naar oranje, zalmkleurig of rood. Als er weinig licht is, maken ze meer bacteriochlorofyl aan om meer licht te oogsten en worden ze dieppaars. Ook zuurstof speelt een rol, purperen niet zwavel bacteriën zoals Rhodobacter en Rhodopseudomonas zetten hun fotosynthetische apparaat aan bij lage zuurstofconcentraties, waardoor zij intenser paars lijken; onder hoge zuurstof schakelen ze het systeem uit en lijken ze beige. In purperen zwavel bacteriën, kunnen de zwavelkorrels opgeslagen in de cel het licht verstrooien, waardoor ze tijdelijk niet violet maar bruin, ogen.
 
-The palette is broad and varies by species and growth stage: pale pink, rose, magenta, violet, and also orange to brick-red or brown when carotenoids dominate or sulphur is present. Nutrients, culture age and temperature fine-tune the shade. In short, the colour isn’t paint—it’s metabolism adapting to light and oxygen—so it works as a simple visual “thermometer” of how these bacteria are operating.`;
-  const statueTextEl = document.querySelector('#statue-text');
+Het kleurenpalet is breed en veranderd met soort en groeistadium, licht roze, roze, magenta, violet, oranje, rood en bruin. De beschikbaarheid van nutriënten, de leeftijd van de cultuur en de temperatuur zijn de fijne regelmechanismen van de kleur. De kleur verandert als een visuele thermometer en geeft veel informatie over hoe de bacteriën zich op dat moment ‘voelen’. Kun jij er een mooi dynamisch schilderij van maken?!  const statueTextEl = document.querySelector('#statue-text')`;
   if (statueTextEl) {
     const current = statueTextEl.getAttribute('text') || {};
     statueTextEl.setAttribute('text', Object.assign({}, current, { value: statueTxt }));
@@ -811,3 +812,4 @@ The palette is broad and varies by species and growth stage: pale pink, rose, ma
   </script>
 </body>
 </html>
+
