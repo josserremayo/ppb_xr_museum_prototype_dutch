@@ -347,18 +347,12 @@
       this._v = new THREE.Vector3();
       this._dir = new THREE.Vector3();
 
-      // ✅ Expose API right away so the footer script can call it immediately
+      // ⚠️ Expose simple API to window only AFTER the scene is fully loaded
       const self = this;
-      window.__rigTouchMove = {
-        setForward(b){ self._forward = !!b; },
-        setBackward(b){ self._backward = !!b; }
-      };
-
-      // Optional safety net (keeps same reference if scene reloads)
       this.el.sceneEl.addEventListener('loaded', () => {
         window.__rigTouchMove = {
-          setForward(b){ self._forward = !!b; },
-          setBackward(b){ self._backward = !!b; }
+          setForward: (b)=>{ self._forward = !!b; },
+          setBackward:(b)=>{ self._backward = !!b; }
         };
       });
     },
@@ -662,7 +656,7 @@
     <a-entity id="museum-shell" gltf-model="#mdl-techo_paredes_2" position="0 6 10" scale="1 1 1" animation-mixer shadow="receive: true" static-body="shape: mesh"></a-entity>
     <a-entity id="floor" gltf-model="#museum_floor_dark" position="0 6.05 9" scale="1 1 1" animation-mixer shadow="receive: true" static-body="shape: box"></a-entity>
 
-    <!-- SPONSORS WALL (optional collider if you don’t want to clip through) -->
+    <!-- SPONSORS WALL -->
     <a-entity id="sponsors-wall" position="10.1 2 -2" rotation="0 -90 0" shadow="receive: true" static-body="shape: box">
       <a-plane width="3.2" height="2.0" color="#0d0f12"
                material="metalness: 0.1; roughness: 0.9"
@@ -677,7 +671,6 @@
     </a-entity>
 
     <!-- ============== CAMERA RIG ============== -->
-    <!-- Important: rig rotation is 0; camera handles look AND WASD. -->
     <a-entity id="rig"
               position="7.5 2 -2"
               rotation="0 0 0"
@@ -704,7 +697,6 @@
     const fwd = document.getElementById('btnForward'); // label says "Back"
     const back = document.getElementById('btnBack');   // label says "Forward"
 
-    // Helper to bind both mouse and touch starts/ends
     function bindHold(el, on, off) {
       const start = (e)=>{ e.preventDefault(); on(); };
       const end   = (e)=>{ e.preventDefault(); off(); };
@@ -718,11 +710,8 @@
       el.addEventListener('touchcancel',end,   {passive:false});
     }
 
-    // More robust mobile check (fallbacks for odd browsers)
-    const isCoarse =
-      (window.matchMedia && (window.matchMedia('(pointer: coarse)').matches ||
-                             window.matchMedia('(any-pointer: coarse)').matches)) ||
-      ('ontouchstart' in window);
+    // Only activate if coarse pointer (mobile/tablet)
+    const isCoarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 
     if (isCoarse) {
       bindHold(fwd,
