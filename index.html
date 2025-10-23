@@ -369,7 +369,6 @@
       const dir = (this._forward ? 1 : 0) + (this._backward ? -1 : 0);
       this._v.copy(this._dir).multiplyScalar(dir * this.data.speed * dt);
 
-      // Move the kinematic body (safe to set position)
       rig.object3D.position.add(this._v);
     }
   });
@@ -670,7 +669,7 @@
     <a-entity id="rig"
               position="7.5 2 -2"
               rotation="0 0 0"
-              kinematic-body="radius: 0.35; height: 1.6; stepHeight: 0.25"
+              body="radius: 0.35; height: 1.6; stepHeight: 0.25"
               rig-touch-move="speed: 2.6">
       <a-entity id="camera"
                 camera
@@ -809,5 +808,6 @@ Het kleurenpalet is breed en veranderd met soort en groeistadium, licht roze, ro
   </script>
 </body>
 </html>
+
 
 
