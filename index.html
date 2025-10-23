@@ -404,7 +404,7 @@
 
       <!-- VIDEO ASSET (muted for autoplay) -->
       <video id="museum-video"
-             src="./asset/purple_bacteria_screen_video.mp4"
+             src="./asset/purplebacteria_cartel_holandes_1.mp4"
              loop
              muted
              playsinline
@@ -414,7 +414,7 @@
 
       <!-- VOICEOVER AUDIO ASSETS -->
       <audio id="planet-voiceover" src="./asset/22-okt.-09.56_-paarse-bal.mp3" preload="auto"></audio>
-      <audio id="museum-voiceover-1" src="./asset/museum_voiceover_1.mpeg" preload="auto"></audio>
+      <audio id="museum-voiceover-1" src="./asset/elixir_dutch.mp3" preload="auto"></audio>
       <audio id="museum-voiceover-2" src="./asset/22-okt.-10.32__color.mp3" preload="auto"></audio>
 
       <!-- SPONSORS IMAGE -->
@@ -788,9 +788,11 @@ Veel later kwamen de cyanobacterien, ookwel bekend als de blauwalgen en de echte
   }
 
   // Elixir text
-  const elixirTxt = `Some purple bacteria, specifically the non-sulphur types, are able to produce hydrogen when exposed to light. The process is called photofermentation: instead of needing high temperatures or pressures, these bacteria operate at room temperature and without oxygen, using light energy as the main “engine” and consuming simple organic compounds (for example, organic acids). For this reason, it is considered a pathway with low external energy input compared with industrial methods such as electrolysis, where electricity is the major cost.
+  const elixirTxt = `Reactor
+  
+Sommige purperen bacteriën, vooral de niet-zwavel types, kunnen waterstof produceren doormiddel van het zogenaamde fotofermentatie proces. Geen hoge temperatuur of druk, maar bij kamertemperatuur en zonder zuurstof, gebruiken ze licht als ‘voedingsbron’ om simpele organische moleculen in waterstof om te zetten. Om deze reden, wordt het gezien als een route met lage externe energie behoefte in vergelijking tot bekendere industriële methodes zoals elektrolyse, waar de elektriciteit de hoofdkostenpost is.
 
-In practice, they are grown in photobioreactors: illuminated vessels where light and organic matter “go in” and hydrogen gas “comes out”. Groups such as Rhodobacter and Rhodopseudomonas are the most studied. The advantage is twofold: besides producing H₂, these bacteria can use carbon-rich waste streams (wastewater or agri-food by-products), turning “leftovers” into an energy resource. It is an active line of research within the circular economy and wastewater treatment, precisely because light provides much of the energy the system needs.`;
+In de praktijk, groeien de purperen bacterien in de fotobioreactoren, met licht en organisch materiaal als input en waterstof als output. Groepen zoals Rhodobacter en Rhodopseudomonas zijn het meest bestudeerd. Het grote voordeel is dat organisch afval hiermee omgezet kan worden in een ‘groene’ of eigenlijk paarse waterstof als nieuwe energiedrager. Het is tegenwoordig een actieve onderzoekslijn binnen de circulaire economie, precies omdat het relatief laag-energetische bijna infrarood licht vrijwel alle energie geeft die het systeem nodig heeft.`;
   const elixirTextEl = document.querySelector('#elixir-text');
   if (elixirTextEl) {
     const current = elixirTextEl.getAttribute('text') || {};
@@ -813,6 +815,7 @@ Het kleurenpalet is breed en veranderd met soort en groeistadium, licht roze, ro
   </script>
 </body>
 </html>
+
 
 
 
