@@ -347,12 +347,18 @@
       this._v = new THREE.Vector3();
       this._dir = new THREE.Vector3();
 
-      // Expose simple API to window so the HTML buttons can call it.
+      // ✅ Expose API right away so the footer script can call it immediately
       const self = this;
+      window.__rigTouchMove = {
+        setForward(b){ self._forward = !!b; },
+        setBackward(b){ self._backward = !!b; }
+      };
+
+      // Optional safety net (keeps same reference if scene reloads)
       this.el.sceneEl.addEventListener('loaded', () => {
         window.__rigTouchMove = {
-          setForward: (b)=>{ self._forward = !!b; },
-          setBackward:(b)=>{ self._backward = !!b; }
+          setForward(b){ self._forward = !!b; },
+          setBackward(b){ self._backward = !!b; }
         };
       });
     },
@@ -712,8 +718,11 @@
       el.addEventListener('touchcancel',end,   {passive:false});
     }
 
-    // Only activate if coarse pointer (mobile/tablet)
-    const isCoarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    // More robust mobile check (fallbacks for odd browsers)
+    const isCoarse =
+      (window.matchMedia && (window.matchMedia('(pointer: coarse)').matches ||
+                             window.matchMedia('(any-pointer: coarse)').matches)) ||
+      ('ontouchstart' in window);
 
     if (isCoarse) {
       bindHold(fwd,
@@ -804,7 +813,7 @@ In de praktijk, groeien de purperen bacterien in de fotobioreactoren, met licht 
 
 De kleur van deze bacteriën hangt af van hun pigment. Ze bevatten bacteriochlorofyl, waarmee ze licht oogsten, die hen de paarse en magenta kleur geeft. En ze bevatten carotenen, waarmee ze zichtzelf tegen te veel licht beschermen en die de oranje en rode kleur toevoegt. Maar dit is geen vaste kleur, zoals verf. Ze passen hun kleur aan, aan hun omgeving, een beetje vergelijkbaar met een kameleon. Hoe deze pigmenten georganiseerd zijn in hun cel beïnvloedt ook de kleur en vorm die wij zien.
 
-De omgeving bepaalt. Onder sterk licht, maken de cellen meer carotenen aan om zichzelf te beschermen. Hierdoor verandert de kleur van een cultuur naar oranje, zalmkleurig of rood. Als er weinig licht is, maken ze meer bacteriochlorofyl aan om meer licht te oogsten en worden ze dieppaars. Ook zuurstof speelt een rol, purperen niet zwavel bacteriën zoals Rhodobacter en Rhodopseudomonas zetten hun fotosynthetische apparaat aan bij lage zuurstofconcentraties, waardoor zij intenser paars lijken; onder hoge zuurstof schakelen ze het systeem uit en lijken ze beige. In purperen zwavel bacteriën, kunnen de zwavelkorrels opgeslagen in de cel het licht verstrooien, waardoor ze tijdelijk niet violet maar bruin, ogen.
+De omgeving bepaalt. Onder sterk licht, maken de cells meer carotenen aan om zichzelf te beschermen. Hierdoor verandert de kleur van een cultuur naar oranje, zalmkleurig of rood. Als er weinig licht is, maken ze meer bacteriochlorofyl aan om meer licht te oogsten en worden ze dieppaars. Ook zuurstof speelt een rol, purperen niet zwavel bacteriën zoals Rhodobacter en Rhodopseudomonas zetten hun fotosynthetische apparaat aan bij lage zuurstofconcentraties, waardoor zij intenser paars lijken; onder hoge zuurstof schakelen ze het systeem uit en lijken ze beige. In purperen zwavel bacteriën, kunnen de zwavelkorrels opgeslagen in de cel het licht verstrooien, waardoor ze tijdelijk niet violet maar bruin, ogen.
 
 Het kleurenpalet is breed en veranderd met soort en groeistadium, licht roze, roze, magenta, violet, oranje, rood en bruin. De beschikbaarheid van nutriënten, de leeftijd van de cultuur en de temperatuur zijn de fijne regelmechanismen van de kleur. De kleur verandert als een visuele thermometer en geeft veel informatie over hoe de bacteriën zich op dat moment ‘voelen’. Kun jij er een mooi dynamisch schilderij van maken?!`;
     const statueTextEl = document.querySelector('#statue-text');
@@ -815,9 +824,3 @@ Het kleurenpalet is breed en veranderd met soort en groeistadium, licht roze, ro
   </script>
 </body>
 </html>
-
-
-
-
-
-
